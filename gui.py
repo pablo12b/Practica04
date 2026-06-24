@@ -1,7 +1,9 @@
 import sys
 import time
 import random
+import platform
 import threading
+import multiprocessing
 from queue import Queue, Empty
 from datetime import datetime
 from typing import List, Dict, Optional
@@ -550,7 +552,24 @@ class AplicacionMonitoreoWindow(QMainWindow):
         """)
         self.progress_bar.setValue(0)
         layout_izq.addWidget(self.progress_bar)
-        
+
+        # Información del entorno de ejecución
+        lbl_env_title = QLabel("INFORMACIÓN DEL ENTORNO", self)
+        lbl_env_title.setStyleSheet("font-weight: bold; font-size: 12px; color: #1a73e8; margin-top: 10px;")
+        layout_izq.addWidget(lbl_env_title)
+
+        gil_activo = sys._is_gil_enabled() if hasattr(sys, "_is_gil_enabled") else True
+        info_entorno = (
+            f"Python: {platform.python_version()} ({platform.python_implementation()})\n"
+            f"SO: {platform.system()} {platform.release()}\n"
+            f"Núcleos CPU: {multiprocessing.cpu_count()}\n"
+            f"GIL: {'Activado' if gil_activo else 'Desactivado'}"
+        )
+        lbl_env = QLabel(info_entorno, self)
+        lbl_env.setStyleSheet("font-size: 10px; color: #5f6368; border: 0px;")
+        lbl_env.setWordWrap(True)
+        layout_izq.addWidget(lbl_env)
+
         layout_izq.addStretch()
         
         body.addWidget(panel_izq)

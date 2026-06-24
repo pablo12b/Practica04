@@ -91,12 +91,19 @@ class EstacionAmbientalProcess(multiprocessing.Process):
         return mediciones
 
     def run(self):
+        # Cada proceso tiene su propia instancia del analizador (memoria aislada)
+        analizador = AnalizadorDatos()
+
         for ciclo in range(1, self.ciclos + 1):
             if self.intervalo > 0:
                 time.sleep(self.intervalo)
 
             # 1. Generar mediciones
             mediciones = self.generar_mediciones()
+
+            # 1.b CÁLCULO PESADO DISTRIBUIDO: cada proceso analiza SUS propias mediciones
+            # en paralelo real sobre distintos núcleos (multiprocessing vence al GIL).
+            analizador.procesar(mediciones)
 
             # Enviar las mediciones al proceso padre a través de la Queue (IPC)
             # Para evitar sobrecargar la IPC de mensajes individuales, podemos enviar la lista
@@ -208,9 +215,10 @@ class ControladorMonitoreoProcesos:
                                 
                     # Comprobar si el ciclo se completó (recibimos datos de todas las estaciones)
                     if len(estaciones_recibidas_ciclo[ciclo]) == self.num_estaciones:
-                        # Procesar estadisticas del ciclo
+                        # El cómputo pesado ya lo hizo cada proceso hijo; el padre solo
+                        # agrega de forma ligera las estadísticas del ciclo (sin carga de CPU).
                         mediciones_ciclo = mediciones_por_ciclo[ciclo]
-                        estadisticas = self.analizador.procesar(mediciones_ciclo)
+                        estadisticas = self.analizador.agregar(mediciones_ciclo)
                         
                         if self.gui_queue:
                             self.gui_queue.put(("FIN_CICLO", {

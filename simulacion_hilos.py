@@ -96,7 +96,12 @@ class EstacionAmbientalThread(threading.Thread):
                 
             # 1. Generación de mediciones
             mediciones = self.generar_mediciones()
-            
+
+            # 1.b CÁLCULO PESADO DISTRIBUIDO: cada hilo analiza SUS propias mediciones.
+            # Es un intento de paralelismo de CPU; el GIL obliga a que se ejecute
+            # de a un hilo por vez, por lo que NO se observa speedup (impacto del GIL).
+            self.controlador.analizador.procesar(mediciones)
+
             # Enviar las mediciones individuales a la cola de la GUI si existe
             if self.queue:
                 for med in mediciones:
@@ -188,8 +193,9 @@ class ControladorMonitoreoHilos:
             ciclo_procesado = self.ciclo_actual
             self.ciclo_actual += 1
             
-        # Analizar mediciones simulando carga computacional pesada (GIL implicado)
-        estadisticas = self.analizador.procesar(mediciones)
+        # El cómputo pesado ya lo realizó cada hilo sobre sus datos; aquí el padre
+        # solo agrega de forma ligera las estadísticas del ciclo (sin carga de CPU).
+        estadisticas = self.analizador.agregar(mediciones)
         
         # Notificar fin de ciclo a la GUI
         if self.queue:
